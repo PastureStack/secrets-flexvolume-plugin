@@ -1,5 +1,6 @@
-/.dapper
-/bin
-/dist
-*.swp
-/.trash-cache
+/.tmp/
+/coverage.out
+/secrets-flexvolume-plugin
+/secrets-flexvolume-plugin.exe
+/*.test
+/*.test.exe

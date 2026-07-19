@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "status": "historical-only",
+  "notice": "These byte-preserved artifacts document a historical vendor tree. The current standard-library-only implementation does not import or use these packages.",
+  "currentImplementation": {
+    "module": "github.com/PastureStack/secrets-flexvolume-plugin",
+    "dependencyModel": "Go standard library only",
+    "historicalArtifactsUsedAtRuntime": false
+  },
+  "rootLicense": {
+    "id": "root-license",
+    "file": "LICENSE",
+    "classification": "Apache-2.0",
+    "bytes": 10351,
+    "sha256": "eb3d7b5485466acbd81f2b496f595ab637d2792e268206b27d99e793bdb67549"
+  },
+  "artifacts": [
+    {
+      "id": "dependency-01",
+      "file": "LICENSES/historical/dependency-01.txt",
+      "package": "github.com/rancher/rancher-flexvol",
+      "originalPath": "vendor/github.com/rancher/rancher-flexvol/LICENSE",
+      "classification": "Apache-2.0",
+      "bytes": 10174,
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    {
+      "id": "dependency-02",
+      "file": "LICENSES/historical/dependency-02.txt",
+      "package": "github.com/sirupsen/logrus",
+      "originalPath": "vendor/github.com/sirupsen/logrus/LICENSE",
+      "classification": "MIT",
+      "bytes": 1082,
+      "sha256": "51a0c9ec7f8b7634181b8d4c03e5b5d204ac21d6e72f46c313973424664b2e6b"
+    },
+    {
+      "id": "dependency-03",
+      "file": "LICENSES/historical/dependency-03.txt",
+      "package": "github.com/urfave/cli",
+      "originalPath": "vendor/github.com/urfave/cli/LICENSE",
+      "classification": "MIT",
+      "bytes": 1084,
+      "sha256": "da277af11b85227490377fbcac6afccc68be560c4fff36ac05ca62de55345fd7"
+    },
+    {
+      "id": "dependency-04",
+      "file": "LICENSES/historical/dependency-04.txt",
+      "package": "golang.org/x/sys",
+      "originalPath": "vendor/golang.org/x/sys/LICENSE",
+      "classification": "BSD-3-Clause",
+      "bytes": 1453,
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+    }
+  ],
+  "goToolchainNotices": [
+    {
+      "id": "go-license",
+      "file": "LICENSES/GO-LICENSE",
+      "classification": "BSD-3-Clause",
+      "bytes": 1453,
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+    },
+    {
+      "id": "go-patents",
+      "file": "LICENSES/GO-PATENTS",
+      "classification": "Additional IP Rights Grant (Patents)",
+      "bytes": 1303,
+      "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+    }
+  ]
+}

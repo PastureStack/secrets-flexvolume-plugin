@@ -1,28 +1,61 @@
-secrets-flexvol
-========
+PastureStack is an independent community effort to preserve, audit, and modernize the Rancher 1.6 ecosystem. It is not affiliated with or endorsed by Rancher Labs or SUSE.
 
-A microservice that does micro things.
+**Upstream:** [`rancher/secrets-flexvol`](https://github.com/rancher/secrets-flexvol). This GitHub fork retains the upstream Git history, authorship, dates, and license notices unchanged; PastureStack maintenance is consolidated into one commit after the preserved upstream boundary.
 
-## Building
+# Secret Volume Driver
 
-`make`
+`secrets-flexvolume-plugin` is the PastureStack Docker volume driver for delivering encrypted control-plane secrets to workloads. The driver exposes a Docker Volume Plugin API v1 socket, requests only the encrypted records authorized by an opaque volume token, authenticates every envelope, decrypts it with the host identity key, and materializes the result inside an isolated in-memory filesystem.
 
+The production entry point is:
 
-## Running
+```text
+secrets-flexvolume-plugin serve
+```
 
-`./bin/secrets-flexvol`
+The release image starts that entry point automatically:
 
-## License
-Copyright (c) 2014-2016 [Rancher Labs, Inc.](http://rancher.com)
+```text
+ghcr.io/pasturestack/secrets-flexvolume-plugin:v0.1.1
+```
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+Catalog deployment is the supported installation path. It runs one driver instance on each eligible host and supplies the compatible control-plane identity through the environment service. Operators do not pass plaintext secret values, private keys, or API credentials on the command line.
 
-[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
+## Runtime contract
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+- Docker driver name: `pasturestack-secret-volume`
+- Plugin socket: `/run/docker/plugins/pasturestack-secret-volume.sock`
+- Private volume root: `/var/lib/pasturestack/volumes/secret-volume`
+- Host identity key inside the container: `/var/lib/pasturestack/etc/ssl/host.key`
+- Health endpoints: `GET /healthz` and `GET /readyz` on port `8093`
+- Current volume option: `io.pasturestack.secrets.token`
+
+The driver accepts the control plane's compatibility token name during migration, but the current source, user interface, driver name, socket, and volume paths use PastureStack naming.
+
+Every secret file must use a safe relative path, a numeric UID and GID, and a read-only mode of `0400`, `0440`, or `0444`. The driver rejects path traversal, symlinks, duplicate names, unsupported algorithms, invalid signatures, unauthenticated ciphertext, writable or executable modes, oversized responses, oversized files, and excessive file counts. Secret contents live in a `tmpfs` mounted with `nodev`, `nosuid`, and `noexec`, and are erased when the final consumer unmounts the volume.
+
+See [the security model](docs/SECURITY-MODEL.md), [the compatibility boundary](docs/COMPATIBILITY.md), [origin and attribution](ORIGIN.md), and [preserved legal artifacts](LICENSES/HISTORICAL-MANIFEST.json).
+
+## Audit planner
+
+The repository also retains a metadata-only audit interface:
+
+```text
+secrets-flexvolume-plugin [--locale en-US|zh-TW] capabilities
+secrets-flexvolume-plugin [--locale en-US|zh-TW] validate
+secrets-flexvolume-plugin [--locale en-US|zh-TW] plan
+```
+
+These commands validate bounded lifecycle metadata and never retrieve or print secret material. They do not execute the resulting plan; runtime delivery is available only through `serve`.
+
+## Validation
+
+Go 1.26 or newer is required:
+
+```text
+./scripts/validate.sh
+./scripts/validate.ps1
+```
+
+The validation scripts check formatting, repeated unit tests, race safety, vet, module integrity, the public-tree policy, deterministic builds, binary content, and audit-CLI behavior. The container build repeats the complete Go test suite before producing the static Linux binary.
+
+No CI/CD configuration is included.
