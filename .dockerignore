@@ -1,4 +1,7 @@
-./bin
-./.dapper
-./dist
-./.trash-cache
+.git
+.gitignore
+bin
+dist
+evidence
+*.log
+*.tmp

@@ -1,0 +1,38 @@
+{
+  "apiVersion": "pasturestack.io/secrets-flexvolume-plugin/v1alpha1",
+  "operation": "stage",
+  "volumeRef": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "ownerRef": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "requestRef": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "idempotencyRef": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+  "sourceRef": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+  "manifest": {
+    "manifestRef": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "version": 1,
+    "generation": 1,
+    "expectedGeneration": 0,
+    "notBefore": "2026-01-01T00:00:00Z",
+    "rotateAt": "2026-01-02T00:00:00Z",
+    "expiresAt": "2026-01-03T00:00:00Z",
+    "entries": [
+      {
+        "name": "application/config",
+        "type": "regular",
+        "claimedBytes": 32,
+        "claimedDigest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+        "uid": 1000,
+        "gid": 1000,
+        "mode": "0400"
+      }
+    ]
+  },
+  "lifecycle": {
+    "currentState": "absent",
+    "leaseCount": 0
+  },
+  "assertions": {
+    "redacted": true,
+    "encrypted": true,
+    "attested": true
+  }
+}
