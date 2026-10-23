@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM golang:1.27.0-bookworm@sha256:484ef6066fa69acb059fdfeda7ba2b8f7391f2ef6abc6f9b8411e669ebd56466 AS build
+FROM golang:1.27.3-bookworm@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5 AS build
 
 ARG VERSION=dev
 WORKDIR /src
@@ -17,8 +17,8 @@ ARG VERSION=dev
 ARG REVISION=unknown
 ARG UBUNTU_SNAPSHOT=20260825T000000Z
 
-ADD --checksum=sha256:6077d27c6b6f8b23590cb01ff877ed8c804a67a5442cc32b5a33da10d2bd0e90 \
-    https://snapshot.ubuntu.com/ubuntu/20260825T000000Z/pool/main/c/ca-certificates/ca-certificates_20260601~26.04.1_all.deb \
+ADD --checksum=sha256:5b6326f1932cfd7be57130561dc78192f09ed9f58bfbe6606ed0c50510c3b6cd \
+    https://archive.ubuntu.com/ubuntu/pool/main/c/ca-certificates/ca-certificates_20260816ubuntu0.26.04.1_all.deb \
     /tmp/ca-certificates.deb
 LABEL org.opencontainers.image.title="PastureStack Secret Volume Driver" \
       org.opencontainers.image.description="Encrypted secret delivery to isolated in-memory Docker volumes" \
@@ -28,6 +28,7 @@ LABEL org.opencontainers.image.title="PastureStack Secret Volume Driver" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}"
 
+ADD --checksum=sha256:5b6326f1932cfd7be57130561dc78192f09ed9f58bfbe6606ed0c50510c3b6cd https://archive.ubuntu.com/ubuntu/pool/main/c/ca-certificates/ca-certificates_20260816ubuntu0.26.04.1_all.deb /opt/pasturestack-ca-certificates.deb
 RUN set -eux; \
     mkdir -p /tmp/ca-bootstrap /etc/ssl/certs; \
     dpkg-deb --extract /tmp/ca-certificates.deb /tmp/ca-bootstrap; \
@@ -39,6 +40,11 @@ RUN set -eux; \
     apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates \
     && rm -f /usr/bin/pebble \
+    && dpkg -i /opt/pasturestack-ca-certificates.deb \
+    && update-ca-certificates --fresh \
+    && test "$(dpkg-query -W -f='${Version}' ca-certificates)" = '20260816ubuntu0.26.04.1' \
+    && test ! -e /usr/share/ca-certificates/mozilla/emSign_ECC_Root_CA_-_G3.crt \
+    && rm -f /opt/pasturestack-ca-certificates.deb \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /out/secrets-flexvolume-plugin /usr/local/bin/secrets-flexvolume-plugin

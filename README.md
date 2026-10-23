@@ -15,7 +15,7 @@ secrets-flexvolume-plugin serve
 The release image starts that entry point automatically:
 
 ```text
-ghcr.io/pasturestack/secrets-flexvolume-plugin:v0.2.0
+ghcr.io/pasturestack/secrets-flexvolume-plugin:v0.2.1
 ```
 
 Catalog deployment is the supported installation path. It runs one driver instance on each eligible host and supplies the compatible control-plane identity through the environment service. Operators do not pass plaintext secret values, private keys, or API credentials on the command line.
@@ -73,3 +73,7 @@ The validation scripts check formatting, repeated unit tests, race safety, vet, 
 The repository-integrity workflow runs for pull requests, `main` pushes, and
 manual dispatch. It validates repository policy but does not publish or deploy
 runtime artifacts.
+
+## October 2026 security maintenance
+
+Maintained Go builds select the patched Go 1.27.3 compiler without raising the existing Go language requirement. Ubuntu build/runtime stages apply the checksum-pinned `ca-certificates 20260816ubuntu0.26.04.1` security package after their frozen APT baseline; the final trust store and installed version are verified. Release artifacts must pass the repository's existing checks before publication.

@@ -1,0 +1,39 @@
+name: Security build verification
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      GOTOOLCHAIN: local
+      GOMAXPROCS: 2
+      GOFLAGS: -p=2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install checksum-pinned Go compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+            --output "$RUNNER_TEMP/go.tar.gz" https://go.dev/dl/go1.27.3.linux-amd64.tar.gz
+          printf '%s  %s\n' 65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40 "$RUNNER_TEMP/go.tar.gz" | sha256sum -c -
+          tar -C "$RUNNER_TEMP" -xzf "$RUNNER_TEMP/go.tar.gz"
+          echo "$RUNNER_TEMP/go/bin" >> "$GITHUB_PATH"
+      - name: Validate source and build the updated runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(go env GOVERSION)" = go1.27.3
+          sh scripts/validate.sh
+          docker build -f package/Dockerfile -t local/secrets-flexvolume-plugin .
+
