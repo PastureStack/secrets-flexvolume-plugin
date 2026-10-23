@@ -53,8 +53,9 @@ jobs:
           docker pull "$scanner"
           for runtime in local/secrets-flexvolume-plugin; do
             name=${runtime##*/}; name=${name%%:*}
-            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --scanners vuln,secret --severity HIGH,CRITICAL --exit-code 1 --format json --output "/evidence/$name-security.json" "$runtime"
-            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --format cyclonedx --output "/evidence/$name-sbom.cdx.json" "$runtime"
+            docker save "$runtime" --output "$RUNNER_TEMP/$name.tar"
+            docker run --rm -v "$RUNNER_TEMP/$name.tar:/image.tar:ro" -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --input /image.tar --scanners vuln,secret --severity HIGH,CRITICAL --exit-code 1 --format json --output "/evidence/$name-security.json"
+            docker run --rm -v "$RUNNER_TEMP/$name.tar:/image.tar:ro" -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --input /image.tar --format cyclonedx --output "/evidence/$name-sbom.cdx.json"
           done
           (cd dist/security-runtime && sha256sum -- *.json images.tar.gz source-revision.txt > SHA256SUMS)
       - name: Upload verified runtime and checksums
