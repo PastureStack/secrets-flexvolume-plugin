@@ -34,7 +34,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(go env GOVERSION)" = go1.27.3
-          bash scripts/validate.sh
+          sudo --preserve-env=PATH,GOTOOLCHAIN,GOMAXPROCS,GOFLAGS bash scripts/validate.sh
           docker build --build-arg VERSION=0.2.1 --build-arg REVISION="$GITHUB_SHA" -f package/Dockerfile -t local/secrets-flexvolume-plugin .
       - name: Retain the exact verified runtime
         shell: bash
