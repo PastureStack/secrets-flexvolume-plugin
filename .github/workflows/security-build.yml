@@ -1,0 +1,115 @@
+name: Security build verification
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      GOTOOLCHAIN: local
+      GOMAXPROCS: 2
+      GOFLAGS: -p=2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install checksum-pinned Go compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+            --output "$RUNNER_TEMP/go.tar.gz" https://go.dev/dl/go1.27.3.linux-amd64.tar.gz
+          printf '%s  %s\n' 65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40 "$RUNNER_TEMP/go.tar.gz" | sha256sum -c -
+          tar -C "$RUNNER_TEMP" -xzf "$RUNNER_TEMP/go.tar.gz"
+          echo "$RUNNER_TEMP/go/bin" >> "$GITHUB_PATH"
+      - name: Validate source and build the updated runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(go env GOVERSION)" = go1.27.3
+          sudo --preserve-env=PATH,GOTOOLCHAIN,GOMAXPROCS,GOFLAGS bash scripts/validate.sh
+          docker build --build-arg VERSION=0.2.1 --build-arg REVISION="$GITHUB_SHA" -f package/Dockerfile -t local/secrets-flexvolume-plugin .
+      - name: Retain the exact verified runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/security-runtime
+          docker image inspect local/secrets-flexvolume-plugin > dist/security-runtime/images.json
+          docker save local/secrets-flexvolume-plugin | gzip -n > dist/security-runtime/images.tar.gz
+          printf '%s\n' "$GITHUB_SHA" > dist/security-runtime/source-revision.txt
+          (cd dist/security-runtime && sha256sum images.json images.tar.gz source-revision.txt > SHA256SUMS)
+      - name: Scan the exact runtime and generate its SBOM
+        shell: bash
+        run: |
+          set -euo pipefail
+          scanner=aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
+          docker pull "$scanner"
+          for runtime in local/secrets-flexvolume-plugin; do
+            name=${runtime##*/}; name=${name%%:*}
+            docker save "$runtime" --output "$RUNNER_TEMP/$name.tar"
+            docker run --rm -v "$RUNNER_TEMP/$name.tar:/image.tar:ro" -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --input /image.tar --scanners vuln,secret --severity HIGH,CRITICAL --exit-code 1 --format json --output "/evidence/$name-security.json"
+            docker run --rm -v "$RUNNER_TEMP/$name.tar:/image.tar:ro" -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --input /image.tar --format cyclonedx --output "/evidence/$name-sbom.cdx.json"
+          done
+          (cd dist/security-runtime && sha256sum -- *.json images.tar.gz source-revision.txt > SHA256SUMS)
+      - name: Upload verified runtime and checksums
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: security-runtime-${{ github.sha }}
+          path: dist/security-runtime/
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      actions: read
+      packages: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: v0.2.1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Publish only this run's verified immutable runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse "refs/tags/$RELEASE_TAG^{}")" = "$GITHUB_SHA"
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "security-runtime-$GITHUB_SHA" --dir dist/security-runtime
+          test "$(cat dist/security-runtime/source-revision.txt)" = "$GITHUB_SHA"
+          (cd dist/security-runtime && sha256sum --check SHA256SUMS)
+          gzip -dc dist/security-runtime/images.tar.gz | docker load
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          : > dist/security-runtime/registry-images.jsonl
+          local_image='local/secrets-flexvolume-plugin'
+          remote_image="ghcr.io/pasturestack/secrets-flexvolume-plugin:$RELEASE_TAG"
+          if docker manifest inspect "$remote_image" >/dev/null 2>"$RUNNER_TEMP/manifest-error"; then
+            echo "Refusing to replace an existing immutable image tag: $remote_image" >&2; exit 1
+          else
+            grep -Eq 'manifest unknown|no such manifest' "$RUNNER_TEMP/manifest-error"
+          fi
+          docker tag "$local_image" "$remote_image"
+          docker push "$remote_image" | tee "$RUNNER_TEMP/push-log"
+          pushed=$(awk '/digest: sha256:/{for(i=1;i<=NF;i++) if($i=="digest:") print $(i+1)}' "$RUNNER_TEMP/push-log")
+          readback=$(docker buildx imagetools inspect "$remote_image" | awk '$1=="Digest:"{print $2; exit}')
+          test "$pushed" = "$readback"
+          [[ "$readback" =~ ^sha256:[0-9a-f]{64}$ ]]
+          jq -n --arg image "$remote_image" --arg digest "$readback" --arg source "$GITHUB_SHA" '{image:$image,digest:$digest,source:$source}' >> dist/security-runtime/registry-images.jsonl
+          sha256sum dist/security-runtime/registry-images.jsonl > dist/security-runtime/registry-images.sha256
+          gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$GITHUB_REPOSITORY $RELEASE_TAG" --notes "Official security rebuild from $GITHUB_SHA. The release contains the exact tested/scanned runtime archive, SBOMs, and registry digest readbacks. No deployment is included." dist/security-runtime/*
