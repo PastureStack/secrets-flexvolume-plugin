@@ -34,6 +34,22 @@ jobs:
         run: |
           set -euo pipefail
           test "$(go env GOVERSION)" = go1.27.3
-          sh scripts/validate.sh
-          docker build -f package/Dockerfile -t local/secrets-flexvolume-plugin .
+          bash scripts/validate.sh
+          docker build --build-arg VERSION=0.2.1 --build-arg REVISION="$GITHUB_SHA" -f package/Dockerfile -t local/secrets-flexvolume-plugin .
+      - name: Retain the exact verified runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/security-runtime
+          docker image inspect local/secrets-flexvolume-plugin > dist/security-runtime/images.json
+          docker save local/secrets-flexvolume-plugin | gzip -n > dist/security-runtime/images.tar.gz
+          printf '%s\n' "$GITHUB_SHA" > dist/security-runtime/source-revision.txt
+          (cd dist/security-runtime && sha256sum images.json images.tar.gz source-revision.txt > SHA256SUMS)
+      - name: Upload verified runtime and checksums
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: security-runtime-${{ github.sha }}
+          path: dist/security-runtime/
+          if-no-files-found: error
+          retention-days: 14
 
