@@ -28,6 +28,8 @@ LABEL org.opencontainers.image.title="PastureStack Secret Volume Driver" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}"
 
+COPY ubuntu-security-packages.lock /licenses/ubuntu-security-packages.lock
+COPY scripts/install-ubuntu-security-updates /usr/local/libexec/pasturestack/install-ubuntu-security-updates
 ADD --checksum=sha256:5b6326f1932cfd7be57130561dc78192f09ed9f58bfbe6606ed0c50510c3b6cd https://archive.ubuntu.com/ubuntu/pool/main/c/ca-certificates/ca-certificates_20260816ubuntu0.26.04.1_all.deb /opt/pasturestack-ca-certificates.deb
 RUN set -eux; \
     mkdir -p /tmp/ca-bootstrap /etc/ssl/certs; \
@@ -45,6 +47,7 @@ RUN set -eux; \
     && test "$(dpkg-query -W -f='${Version}' ca-certificates)" = '20260816ubuntu0.26.04.1' \
     && test ! -e /usr/share/ca-certificates/mozilla/emSign_ECC_Root_CA_-_G3.crt \
     && rm -f /opt/pasturestack-ca-certificates.deb \
+    && sh /usr/local/libexec/pasturestack/install-ubuntu-security-updates /licenses/ubuntu-security-packages.lock /etc/ssl/certs/ca-certificates.crt \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /out/secrets-flexvolume-plugin /usr/local/bin/secrets-flexvolume-plugin
