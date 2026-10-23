@@ -56,9 +56,7 @@ jobs:
             name=${runtime##*/}; name=${name%%:*}
             docker save "$runtime" --output "$RUNNER_TEMP/$name.tar"
             docker run --rm -v "$RUNNER_TEMP/$name.tar:/image.tar:ro" -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --input /image.tar --scanners vuln,secret --list-all-pkgs --format json --output "/evidence/$name-security.json"
-            python3 .github/scripts/enforce-runtime-vulnerabilities.py \
-              "dist/security-runtime/$name-security.json" .github/runtime-unfixed.json \
-              --repository PastureStack/secrets-flexvolume-plugin
+            python3 .github/scripts/enforce-runtime-vulnerabilities.py --repository PastureStack/secrets-flexvolume-plugin < "dist/security-runtime/$name-security.json"
             docker run --rm -v "$RUNNER_TEMP/$name.tar:/image.tar:ro" -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --input /image.tar --format cyclonedx --output "/evidence/$name-sbom.cdx.json"
           done
           (cd dist/security-runtime && sha256sum -- *.json images.tar.gz source-revision.txt > SHA256SUMS)
