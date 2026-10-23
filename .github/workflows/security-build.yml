@@ -50,11 +50,15 @@ jobs:
         run: |
           set -euo pipefail
           scanner=aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
+          PYTHONDONTWRITEBYTECODE=1 python3 .github/scripts/test_runtime_vulnerability_policy.py
           docker pull "$scanner"
           for runtime in local/secrets-flexvolume-plugin; do
             name=${runtime##*/}; name=${name%%:*}
             docker save "$runtime" --output "$RUNNER_TEMP/$name.tar"
-            docker run --rm -v "$RUNNER_TEMP/$name.tar:/image.tar:ro" -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --input /image.tar --scanners vuln,secret --severity HIGH,CRITICAL --exit-code 1 --format json --output "/evidence/$name-security.json"
+            docker run --rm -v "$RUNNER_TEMP/$name.tar:/image.tar:ro" -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --input /image.tar --scanners vuln,secret --list-all-pkgs --format json --output "/evidence/$name-security.json"
+            python3 .github/scripts/enforce-runtime-vulnerabilities.py \
+              "dist/security-runtime/$name-security.json" .github/runtime-unfixed.json \
+              --repository PastureStack/secrets-flexvolume-plugin
             docker run --rm -v "$RUNNER_TEMP/$name.tar:/image.tar:ro" -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --input /image.tar --format cyclonedx --output "/evidence/$name-sbom.cdx.json"
           done
           (cd dist/security-runtime && sha256sum -- *.json images.tar.gz source-revision.txt > SHA256SUMS)

@@ -77,3 +77,13 @@ runtime artifacts.
 ## October 2026 security maintenance
 
 Maintained Go builds select the patched Go 1.27.3 compiler without raising the existing Go language requirement. Ubuntu build/runtime stages apply the checksum-pinned `ca-certificates 20260816ubuntu0.26.04.1` security package after their frozen APT baseline; the final trust store and installed version are verified. Release artifacts must pass the repository's existing checks before publication.
+
+## Full-severity release policy
+
+Release verification retains the complete runtime vulnerability report. Every
+finding with an official fix blocks release, regardless of severity. Unknown
+findings block unless a separately reviewed, exact not-affected statement is
+proved by the actual product dependency graph. LOW/MEDIUM findings without an
+official fix require the repository's exact CVE/package/version/PURL review ledger;
+new or changed findings fail closed. This policy-only update does not replace any
+already published immutable artifact.
