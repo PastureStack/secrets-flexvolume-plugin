@@ -4,6 +4,10 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 
 # Secret Volume Driver
 
+Linux source candidate **`v0.2.2`** consumes verified Ubuntu security backports without adding runtime packages or changing the host's coreutils provider. Publication and integration checks must complete before deployment.
+
+The runtime recipe applies the qualified Ubuntu 26.04 backport bundle only to already-installed packages and preserves the selected coreutils provider. The immutable bundle digest and final-image checks are pending. Bundle manifests, qualification, exact-version OpenVEX, source inputs and install/verify receipts are retained under `/usr/share/pasturestack/security/ubuntu-backports/`; raw scan evidence and the existing full-severity release policy remain required.
+
 `secrets-flexvolume-plugin` is the PastureStack Docker volume driver for delivering encrypted control-plane secrets to workloads. The driver exposes a Docker Volume Plugin API v1 socket, requests only the encrypted records authorized by an opaque volume token, authenticates every envelope, decrypts it with the host identity key, and materializes the result inside an isolated in-memory filesystem.
 
 The production entry point is:
@@ -12,10 +16,10 @@ The production entry point is:
 secrets-flexvolume-plugin serve
 ```
 
-The release image starts that entry point automatically:
+After publication, the candidate image starts that entry point automatically:
 
 ```text
-ghcr.io/pasturestack/secrets-flexvolume-plugin:v0.2.1
+ghcr.io/pasturestack/secrets-flexvolume-plugin:v0.2.2
 ```
 
 Catalog deployment is the supported installation path. It runs one driver instance on each eligible host and supplies the compatible control-plane identity through the environment service. Operators do not pass plaintext secret values, private keys, or API credentials on the command line.
@@ -85,5 +89,4 @@ finding with an official fix blocks release, regardless of severity. Unknown
 findings block unless a separately reviewed, exact not-affected statement is
 proved by the actual product dependency graph. LOW/MEDIUM findings without an
 official fix require the repository's exact CVE/package/version/PURL review ledger;
-new or changed findings fail closed. This policy-only update does not replace any
-already published immutable artifact.
+new or changed findings fail closed. Each candidate must pass this policy against its exact image and package versions.

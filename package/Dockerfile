@@ -1,4 +1,6 @@
 # syntax=docker/dockerfile:1.7
+ARG UBUNTU_SECURITY_BACKPORTS_IMAGE=ghcr.io/pasturestack/ubuntu-security-backports:v0.1.0@sha256:2742a3d429e4e14bc587f6dedc51ded4246cf90bbaedcd86c67d0885e32a6f2a
+
 FROM golang:1.27.3-bookworm@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5 AS build
 
 ARG VERSION=dev
@@ -11,7 +13,10 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o /out/secrets-flexvolume-plugin \
     ./cmd/secrets-flexvolume-plugin
 
+FROM ${UBUNTU_SECURITY_BACKPORTS_IMAGE} AS ubuntu_security_backports
+
 FROM ubuntu:26.04@sha256:2260313b31c8c011cd2eebe728008efac1b3982be73eb71348ea2648d2c0e09b
+ARG UBUNTU_SECURITY_BACKPORTS_IMAGE
 
 ARG VERSION=dev
 ARG REVISION=unknown
@@ -51,6 +56,19 @@ RUN set -eux; \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /out/secrets-flexvolume-plugin /usr/local/bin/secrets-flexvolume-plugin
+
+# Keep the build-only installer and package archives outside the final image.
+RUN --mount=type=bind,from=ubuntu_security_backports,source=/out,target=/opt/pasturestack/ubuntu-security-backports,readonly \
+    set -eux; \
+    evidence=/usr/share/pasturestack/security/ubuntu-backports; \
+    mkdir -p "$evidence"; \
+    /opt/pasturestack/ubuntu-security-backports/install-existing-backports --install-in-docker-build > "$evidence/install.json"; \
+    /opt/pasturestack/ubuntu-security-backports/install-existing-backports --verify-installed > "$evidence/verify.json"; \
+    for file in manifest.json qualification.json source-inputs.lock.json openvex.json; do \
+        cp "/opt/pasturestack/ubuntu-security-backports/$file" "$evidence/$file"; \
+    done; \
+    printf '%s\n' "$UBUNTU_SECURITY_BACKPORTS_IMAGE" > "$evidence/bundle-image.txt"; \
+    (cd "$evidence" && sha256sum manifest.json qualification.json source-inputs.lock.json openvex.json install.json verify.json bundle-image.txt > SHA256SUMS)
 
 USER 0:0
 ENTRYPOINT ["/usr/local/bin/secrets-flexvolume-plugin"]
