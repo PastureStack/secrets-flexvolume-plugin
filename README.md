@@ -6,7 +6,7 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 
 Linux runtime **`v0.2.2`** consumes verified Ubuntu security backports without adding packages or changing the existing coreutils provider.
 
-The runtime recipe applies the qualified Ubuntu 26.04 backport bundle only to already-installed packages and preserves the selected coreutils provider. The immutable bundle digest and final-image checks are pending. Bundle manifests, qualification, exact-version OpenVEX, source inputs and install/verify receipts are retained under `/usr/share/pasturestack/security/ubuntu-backports/`; raw scan evidence and the existing full-severity release policy remain required.
+The runtime recipe applies the qualified Ubuntu 26.04 backport bundle only to already-installed packages and preserves the selected coreutils provider. The published `v0.2.2` image passed the immutable bundle and final-image checks; see the [release evidence](https://github.com/PastureStack/secrets-flexvolume-plugin/actions/runs/40140965006). Bundle manifests, qualification, exact-version OpenVEX, source inputs and install/verify receipts are retained under `/usr/share/pasturestack/security/ubuntu-backports/`; raw scan evidence and the existing full-severity release policy remain required.
 
 `secrets-flexvolume-plugin` is the PastureStack Docker volume driver for delivering encrypted control-plane secrets to workloads. The driver exposes a Docker Volume Plugin API v1 socket, requests only the encrypted records authorized by an opaque volume token, authenticates every envelope, decrypts it with the host identity key, and materializes the result inside an isolated in-memory filesystem.
 
@@ -16,7 +16,7 @@ The production entry point is:
 secrets-flexvolume-plugin serve
 ```
 
-After publication, the candidate image starts that entry point automatically:
+The published image starts that entry point automatically:
 
 ```text
 ghcr.io/pasturestack/secrets-flexvolume-plugin:v0.2.2
