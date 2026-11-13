@@ -25,17 +25,18 @@ jobs:
         run: |
           set -euo pipefail
           curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
-            --output "$RUNNER_TEMP/go.tar.gz" https://go.dev/dl/go1.27.3.linux-amd64.tar.gz
-          printf '%s  %s\n' 65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40 "$RUNNER_TEMP/go.tar.gz" | sha256sum -c -
+            --output "$RUNNER_TEMP/go.tar.gz" https://go.dev/dl/go1.27.4.linux-amd64.tar.gz
+          printf '%s  %s\n' 7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840 "$RUNNER_TEMP/go.tar.gz" | sha256sum -c -
           tar -C "$RUNNER_TEMP" -xzf "$RUNNER_TEMP/go.tar.gz"
           echo "$RUNNER_TEMP/go/bin" >> "$GITHUB_PATH"
       - name: Validate source and build the updated runtime
         shell: bash
         run: |
           set -euo pipefail
-          test "$(go env GOVERSION)" = go1.27.3
+          test "$(go env GOVERSION)" = go1.27.4
           sudo --preserve-env=PATH,GOTOOLCHAIN,GOMAXPROCS,GOFLAGS bash scripts/validate.sh
-          docker build --build-arg VERSION=0.2.2 --build-arg REVISION="$GITHUB_SHA" -f package/Dockerfile -t local/secrets-flexvolume-plugin .
+          docker build --target qualified_backports --build-arg VERSION=0.2.3 --build-arg REVISION="$GITHUB_SHA" -f package/Dockerfile -t local/secrets-flexvolume-plugin-backports .
+          docker build --build-arg VERSION=0.2.3 --build-arg REVISION="$GITHUB_SHA" -f package/Dockerfile -t local/secrets-flexvolume-plugin .
       - name: Retain the exact verified runtime
         shell: bash
         run: |
@@ -58,9 +59,13 @@ jobs:
             docker save "$runtime" --output "$RUNNER_TEMP/$name.tar"
             docker run --rm -v "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" -v "$RUNNER_TEMP/$name.tar:/image.tar:ro" -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --input /image.tar --scanners vuln,secret --list-all-pkgs --format json --output "/evidence/$name-security-raw.json"
             docker run --rm -v "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" -v "$RUNNER_TEMP/$name.tar:/image.tar:ro" -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --input /image.tar --format cyclonedx --output "/evidence/$name-sbom.cdx.json"
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+              -v "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" -v "$PWD/dist/security-runtime:/evidence" "$scanner" \
+              image --skip-db-update --offline-scan --format cyclonedx --output /evidence/backport-stage.cdx.json "$runtime-backports"
+            python3 .github/scripts/verify-official-glibc.py "dist/security-runtime/backport-stage.cdx.json" "dist/security-runtime/$name-sbom.cdx.json"
             backports="$RUNNER_TEMP/secrets-flexvolume-plugin-ubuntu-backports"
             bash .github/scripts/collect-ubuntu-backport-evidence.sh \
-              "$runtime" "dist/security-runtime/$name-sbom.cdx.json" "$backports" \
+              "$runtime" "dist/security-runtime/backport-stage.cdx.json" "$backports" \
               > "dist/security-runtime/$name-ubuntu-backports-verification.json"
             tar -C "$backports" -czf "dist/security-runtime/$name-ubuntu-backports.tar.gz" .
             docker run --rm -v "$backports:/backports:ro" -v "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" -v "$RUNNER_TEMP/$name.tar:/image.tar:ro" -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --vex /backports/openvex.json --skip-db-update --input /image.tar --scanners vuln,secret --list-all-pkgs --format json --output "/evidence/$name-security.json"
@@ -88,7 +93,7 @@ jobs:
       packages: write
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_TAG: v0.2.2
+      RELEASE_TAG: v0.2.3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
