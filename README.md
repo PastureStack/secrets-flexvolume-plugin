@@ -4,9 +4,9 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 
 # Secret Volume Driver
 
-Linux runtime **`v0.2.2`** consumes verified Ubuntu security backports without adding packages or changing the existing coreutils provider.
+Linux runtime **`v0.2.3`** uses Go 1.27.4, Ubuntu 26.04 APT 3.2.1ubuntu0.1 and glibc 2.43-2ubuntu2.7. See the [release and SBOM](https://github.com/PastureStack/secrets-flexvolume-plugin/releases/tag/v0.2.3).
 
-The runtime recipe applies the qualified Ubuntu 26.04 backport bundle only to already-installed packages and preserves the selected coreutils provider. The published `v0.2.2` image passed the immutable bundle and final-image checks; see the [release evidence](https://github.com/PastureStack/secrets-flexvolume-plugin/actions/runs/40140965006). Bundle manifests, qualification, exact-version OpenVEX, source inputs and install/verify receipts are retained under `/usr/share/pasturestack/security/ubuntu-backports/`; raw scan evidence and the existing full-severity release policy remain required.
+The runtime recipe applies the qualified Ubuntu 26.04 backport bundle only to already-installed packages and preserves the selected coreutils provider. The published `v0.2.3` image passed the immutable bundle and final-image checks; see the [release evidence](https://github.com/PastureStack/secrets-flexvolume-plugin/actions/runs/43349712338). Bundle manifests, qualification, exact-version OpenVEX, source inputs and install/verify receipts are retained under `/usr/share/pasturestack/security/ubuntu-backports/`; raw scan evidence and the existing full-severity release policy remain required.
 
 `secrets-flexvolume-plugin` is the PastureStack Docker volume driver for delivering encrypted control-plane secrets to workloads. The driver exposes a Docker Volume Plugin API v1 socket, requests only the encrypted records authorized by an opaque volume token, authenticates every envelope, decrypts it with the host identity key, and materializes the result inside an isolated in-memory filesystem.
 
@@ -19,7 +19,7 @@ secrets-flexvolume-plugin serve
 The published image starts that entry point automatically:
 
 ```text
-ghcr.io/pasturestack/secrets-flexvolume-plugin:v0.2.2
+ghcr.io/pasturestack/secrets-flexvolume-plugin:v0.2.3
 ```
 
 Catalog deployment is the supported installation path. It runs one driver instance on each eligible host and supplies the compatible control-plane identity through the environment service. Operators do not pass plaintext secret values, private keys, or API credentials on the command line.
