@@ -59,9 +59,11 @@ jobs:
             docker save "$runtime" --output "$RUNNER_TEMP/$name.tar"
             docker run --rm -v "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" -v "$RUNNER_TEMP/$name.tar:/image.tar:ro" -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --input /image.tar --scanners vuln,secret --list-all-pkgs --format json --output "/evidence/$name-security-raw.json"
             docker run --rm -v "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" -v "$RUNNER_TEMP/$name.tar:/image.tar:ro" -v "$PWD/dist/security-runtime:/evidence" "$scanner" image --input /image.tar --format cyclonedx --output "/evidence/$name-sbom.cdx.json"
-            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-              -v "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" -v "$PWD/dist/security-runtime:/evidence" "$scanner" \
-              image --skip-db-update --offline-scan --format cyclonedx --output /evidence/backport-stage.cdx.json "$runtime-backports"
+            docker save "$runtime-backports" --output "$RUNNER_TEMP/$name-backports.tar"
+            docker run --rm -v "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" \
+              -v "$RUNNER_TEMP/$name-backports.tar:/image.tar:ro" -v "$PWD/dist/security-runtime:/evidence" "$scanner" \
+              image --skip-db-update --offline-scan --input /image.tar --format cyclonedx --output /evidence/backport-stage.cdx.json
+            rm -f "$RUNNER_TEMP/$name-backports.tar"
             python3 .github/scripts/verify-official-glibc.py "dist/security-runtime/backport-stage.cdx.json" "dist/security-runtime/$name-sbom.cdx.json"
             backports="$RUNNER_TEMP/secrets-flexvolume-plugin-ubuntu-backports"
             bash .github/scripts/collect-ubuntu-backport-evidence.sh \
